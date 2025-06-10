@@ -2,43 +2,21 @@ import codecs
 import numpy
 import handle_key
 import sys
+import handle_args
 
 # Dimensão da matriz chave, por consequência do tamanho do bloco de texto
 TEXT_PART_LENGHT = 2
 
-# Verifica se foram passados argumentos suficientes
-if len(sys.argv) < 3:
-    print("Por favor forneça os argumentos necessários")
-    print("Uso: python app.py [nome_do_arquivo.txt] [senha] [criptografar|decriptografar]")
-    sys.exit(1)
-
-# Pega o nome do arquivo
-FILE_NAME = sys.argv[1]
-
-# Pega a senha se fornecida
-USER_PASSWORD = sys.argv[2]
-
-# Pega o modo de operação (criptografar ou decriptografar)
-modo = sys.argv[3].lower()
-if modo == "criptografar":
-    IS_CIPHERING = 1
-elif modo == "decriptografar": 
-    IS_CIPHERING = 0
-else:
-    print("Modo inválido. Use 'criptografar' ou 'decriptografar'")
-    sys.exit(1)
-
-# Remove o sufixo _cifrado no nome base do arquivo caso esteja decriptografando
-baseFileName = FILE_NAME.rsplit('.', 1)[0]
-if not IS_CIPHERING and baseFileName.endswith('_cifrado'):
-    baseFileName = baseFileName[:-8]
-
-# Adiciona o sufixo _cifrado ou _decifrado no nome do arquivo de resultado
-resultFileName = baseFileName + ('_cifrado' if IS_CIPHERING else '_decifrado') + '.txt'
-
 # Alfabeto conhecido de caracteres
-alphabet = "".join(chr(i) for i in range(32, 127)) + "çÇáéíóúâêîôûãõàèìòùäëïöüÁÉÍÓÚÂÊÎÔÛÃÕÀÈÌÒÙÄËÏÖÜ—ª"
-alphabetLenght = len(alphabet)
+ALPHABET = "".join(chr(i) for i in range(32, 127)) + "çÇáéíóúâêîôûãõàèìòùäëïöüÁÉÍÓÚÂÊÎÔÛÃÕÀÈÌÒÙÄËÏÖÜ—ª"
+ALPHABET_LENGHT = len(ALPHABET)
+
+# Pega os argumentos passados pela linha de comando
+args = handle_args.getArgs()
+FILE_NAME = args[0]
+USER_PASSWORD = args[1]
+IS_CIPHERING = args[2]
+RESULT_FILE_NAME = args[3]
 
 def add_padding(text): # Adiciona espaços para completar o bloco
     # Calcula o número de caracteres necessários para completar o bloco
@@ -82,36 +60,11 @@ def generateCipherKey(key, alphabetLenght): # Gera a matriz da chave
 
     return cipherKey
 
-# Caso esteja criptografando, gera a chave a partir da senha definida
-if IS_CIPHERING:
-    keyData = handle_key.generateKey(USER_PASSWORD)
-    key = keyData[0]
-    salt = keyData[1]
-
-    keyFile = codecs.open(".key", "wb");
-    keyFile.write(key)
-    keyFile.close()
-
-    saltFile = codecs.open(".salt", "wb");
-    saltFile.write(salt)
-    saltFile.close()
-# Caso esteja decriptografando, busca a chave nos arquivos
-else:
-    keyFile = codecs.open(".key", "rb");
-    saltFile = codecs.open(".salt", "rb");
-
-    key = keyFile.read()
-    salt = saltFile.read()
-
-    if not handle_key.checkPassword(USER_PASSWORD, key, salt):
-        print("Senha inválida!")
-        sys.exit(1)
-
-
-cipherKey = generateCipherKey(key, alphabetLenght)
-resultFile = codecs.open(resultFileName, "w", "utf-8");
+key = handle_key.getKey(USER_PASSWORD, IS_CIPHERING)
+cipherKey = generateCipherKey(key, ALPHABET_LENGHT)
 
 baseFile = codecs.open(FILE_NAME, "r", "utf-8")
+resultFile = codecs.open(RESULT_FILE_NAME, "w", "utf-8");
 
 # Itera sobre cada linha do arquivo
 for text in baseFile:
@@ -125,7 +78,7 @@ for text in baseFile:
     # Converte o texto para uma lista de índices
     for c in text:
         try:
-            index = alphabet.index(c)
+            index = ALPHABET.index(c)
         except ValueError:
             index = -1
 
@@ -145,16 +98,18 @@ for text in baseFile:
 
         for i in range(TEXT_PART_LENGHT):
             for j in range(TEXT_PART_LENGHT):
-                result[i] = (result[i] + (cipherKey[i][j] * partArr[j][0])) % alphabetLenght
+                result[i] = (result[i] + (cipherKey[i][j] * partArr[j][0])) % ALPHABET_LENGHT
 
         for r in result:
             indexesAfterResult.append(int(r[0]))
 
     # Converte os índices de volta para caracteres
-    textArr = [alphabet[num] for num in indexesAfterResult]
+    textArr = [ALPHABET[num] for num in indexesAfterResult]
     resultText = ''.join(textArr)
 
     resultFile.write(resultText)
     resultFile.write('\n')
 
 resultFile.close()
+
+print("Arquivo processado com sucesso!")
