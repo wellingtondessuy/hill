@@ -1,7 +1,0 @@
-Aqui tem um texto do 123 que está sendo utilizado!
-
-Pulou a linha e agora chegou na linha 3.
-
-Vamos ver se vai criptografar certinho!
-
-;) xD
